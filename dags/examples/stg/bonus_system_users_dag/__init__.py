@@ -3,4 +3,4 @@ from __future__ import annotations
 from airflow.decorators import dag, task
 
 from examples.stg.bonus_system_users_dag.bonus_system_users_dag import bonus_system_users_dag
-from stg import EtlSetting, StgEtlSettingsRepository
+from stg.stg_settings_repository import EtlSetting, StgEtlSettingsRepository
