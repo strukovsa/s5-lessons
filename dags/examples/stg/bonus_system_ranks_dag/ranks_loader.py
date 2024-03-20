@@ -1,7 +1,7 @@
 from logging import Logger
 from typing import List
 
-from examples.stg import EtlSetting, StgEtlSettingsRepository
+from stg import EtlSetting, StgEtlSettingsRepository
 from lib import PgConnect
 from lib.dict_util import json2str
 from psycopg import Connection
@@ -62,7 +62,7 @@ class RankDestRepository:
 
 
 class RankLoader:
-    WF_KEY = "example_ranks_origin_to_stg_workflow"
+    WF_KEY = "ranks_origin_to_stg_workflow"
     LAST_LOADED_ID_KEY = "last_loaded_id"
     BATCH_LIMIT = 1  # Рангов мало, но мы хотим продемонстрировать инкрементальную загрузку рангов.
 
