@@ -1,6 +1,9 @@
 from logging import Logger
 from typing import List
 
+import sys
+sys.path.insert(0,'/lessons/dags/examples/')
+
 from stg import EtlSetting, StgEtlSettingsRepository
 from lib import PgConnect
 from lib.dict_util import json2str
