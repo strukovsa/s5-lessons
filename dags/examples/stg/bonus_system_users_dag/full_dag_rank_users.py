@@ -1,4 +1,6 @@
 import logging
+import sys
+sys.path.insert(0,'/lessons/dags/examples/')
 
 import pendulum
 from airflow.decorators import dag, task
