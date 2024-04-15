@@ -47,7 +47,12 @@ class EventsDestRepository:
             cur.execute(
                 """
                     INSERT INTO stg.bonussystem_events(id, event_ts, event_type, event_value)
-                    VALUES (%(id)s, %(event_ts)s, %(event_type)s, %(event_value)s);
+                    VALUES (%(id)s, %(event_ts)s, %(event_type)s, %(event_value)s)
+                    ON CONFLICT (id) DO UPDATE
+                    SET
+                        event_ts = EXCLUDED.event_ts,
+                        event_type = EXCLUDED.event_type,
+                        event_value = EXCLUDED.event_value;
                 """,
                 {
                     "id": events.id,
@@ -61,7 +66,7 @@ class EventsDestRepository:
 class EventsLoader:
     WF_KEY = "example_events_origin_to_stg_workflow"
     LAST_LOADED_ID_KEY = "last_loaded_id"
-    BATCH_LIMIT = 100  
+    BATCH_LIMIT = 1000  
 
     def __init__(self, pg_origin: PgConnect, pg_dest: PgConnect, log: Logger) -> None:
         self.pg_dest = pg_dest
