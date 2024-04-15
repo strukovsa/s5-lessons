@@ -6,7 +6,7 @@ import pendulum
 from airflow.decorators import dag, task
 from examples.stg.bonus_system_ranks_dag.ranks_loader import RankLoader
 from examples.stg.bonus_system_users_dag.users_loader import UsersLoader
-from examples.stg.bonus_system_users_dag.outbox import EventsLoader
+from examples.stg.outbox.events_loader import EventsLoader
 from lib import ConnectionBuilder
 
 log = logging.getLogger(__name__)
@@ -19,7 +19,7 @@ log = logging.getLogger(__name__)
     tags=['sprint5', 'stg', 'origin', 'example'],  # Теги, используются для фильтрации в интерфейсе Airflow.
     is_paused_upon_creation=True  # Остановлен/запущен при появлении. Сразу запущен.
 )
-def sprint5_example_stg_bonus_system_users_ranks_dag():
+def sprint5_outbox_dag():
     # Создаем подключение к базе dwh.
     dwh_pg_connect = ConnectionBuilder.pg_conn("PG_WAREHOUSE_CONNECTION")
 
@@ -39,7 +39,7 @@ def sprint5_example_stg_bonus_system_users_ranks_dag():
         rest_loader = UsersLoader(origin_pg_connect, dwh_pg_connect, log)
         rest_loader.load_users()  # Вызываем функцию, которая перельет данные.
 
-     @task(task_id="events_load")
+    @task(task_id="events_load")
     def load_events():
         # создаем экземпляр класса, в котором реализована логика.
         rest_loader = EventsLoader(origin_pg_connect, dwh_pg_connect, log)
@@ -55,4 +55,4 @@ def sprint5_example_stg_bonus_system_users_ranks_dag():
     ranks_dict >> users_dict >> events_load # type: ignore
 
 
-stg_bonus_system_users_ranks_dag = sprint5_example_stg_bonus_system_users_ranks_dag()
+outbox_dag = sprint5_outbox_dag()
