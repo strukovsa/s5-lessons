@@ -9,7 +9,7 @@ from lib.dict_util import json2str
 from psycopg import Connection
 from psycopg.rows import class_row
 from pydantic import BaseModel
-import datetime
+from datetime import datetime
 
 
 class EventsObj(BaseModel):
