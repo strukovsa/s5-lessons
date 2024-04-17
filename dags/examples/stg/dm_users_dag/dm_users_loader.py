@@ -15,7 +15,6 @@ class DmUsersObj(BaseModel):
     object_value: str
    
 class DmUsersDdsObj(BaseModel):
-    id: int
     user_id: str
     user_name: str
     user_login: str
