@@ -7,6 +7,7 @@ from lib.dict_util import json2str
 from psycopg import Connection
 from psycopg.rows import class_row
 from pydantic import BaseModel
+import json
 
 class DmUsersObj(BaseModel):
     id: int
@@ -85,6 +86,15 @@ class DmUsersLoader:
             if not wf_setting:
                 wf_setting = EtlSetting(id=0, workflow_key=self.WF_KEY, workflow_settings={self.LAST_LOADED_ID_KEY: -1})
 
+            # Map DmUsersObj to DmUsersDdsObj
+            def map_user(user: DmUsersObj) -> DmUsersDdsObj:
+                object_value_dict = json.loads(user.object_value)
+                return DmUsersDdsObj(
+                user_id=str(object_value_dict["_id"]),
+                user_name=object_value_dict["name"],
+                user_login=object_value_dict["login"]
+            )
+
             # Вычитываем очередную пачку объектов.
             last_loaded = wf_setting.workflow_settings[self.LAST_LOADED_ID_KEY]
             load_queue = self.origin.list_users(last_loaded, self.BATCH_LIMIT)
@@ -95,7 +105,8 @@ class DmUsersLoader:
 
             # Сохраняем объекты в базу dwh.
             for user in load_queue:
-                self.stg.insert_user(conn, user)
+                mapped_user = map_user(user)
+                self.stg.insert_user(conn, mapped_user)
 
             # Сохраняем прогресс.
             # Мы пользуемся тем же connection, поэтому настройка сохранится вместе с объектами,
