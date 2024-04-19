@@ -131,7 +131,7 @@ class DmProductsLoader:
                     return None
 
                 return DmProductsDdsObj(
-                product_id=object_value_dict["_id"],
+                product_id=object_value_dict["order_items"][0]["id"],
                 product_name=object_value_dict["order_items"][0]["name"],
                 product_price=object_value_dict["order_items"][0]["price"],
                 active_from=datetime.strptime(object_value_dict["update_ts"], "%Y-%m-%d %H:%M:%S"),
