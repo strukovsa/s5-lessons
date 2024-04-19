@@ -107,7 +107,8 @@ class DmRestaurantsLoader:
                 return DmRestaurantsDdsObj(
                     restaurant_id=restaurant.object_id,
                     restaurant_name=object_value_dict["name"],
-                    active_from=restaurant.update_ts
+                    active_from=restaurant.update_ts,
+                    active_to=datetime(2099, 12, 31)
             )
 
             # Вычитываем очередную пачку объектов.
