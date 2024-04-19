@@ -36,7 +36,7 @@ class DmTimestampsOriginRepository:
                         object_id,
                         object_value
                     FROM stg.ordersystem_orders
-                    WHERE id > %(threshold)s AND object_value->>'final_status' IN ('CLOSED', 'CANCELLED') 
+                    WHERE id > %(threshold)s AND object_value::json->>'final_status' IN ('CLOSED', 'CANCELLED') 
                     --Пропускаем те объекты, которые уже загрузили и отбираем нужные статусы заказа.
                     ORDER BY id ASC --Обязательна сортировка по id, т.к. id используем в качестве курсора.
                     LIMIT %(limit)s; --Обрабатываем только одну пачку объектов.
