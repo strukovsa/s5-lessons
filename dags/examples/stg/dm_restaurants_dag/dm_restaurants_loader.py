@@ -8,35 +8,39 @@ from psycopg import Connection
 from psycopg.rows import class_row
 from pydantic import BaseModel
 import json
+from datetime import datetime
 
 class DmRestaurantsObj(BaseModel):
     id: int
     object_id: str
     object_value: str
+    update_ts: datetime
    
 class DmRestaurantsDdsObj(BaseModel):
-    user_id: str
-    user_name: str
-    user_login: str
+    restaurant_id: str
+    restaurant_name: str
+    active_from: datetime
+    active_to: datetime
 
 class DmRestaurantsOriginRepository:
     def __init__(self, pg: PgConnect) -> None:
         self._db = pg
 
-    def list_users(self, user_threshold: int, limit: int) -> List[DmRestaurantsObj]:
-        with self._db.client().cursor(row_factory=class_row(DmUsersObj)) as cur:
+    def list_restaurants(self, restaurant_threshold: int, limit: int) -> List[DmRestaurantsObj]:
+        with self._db.client().cursor(row_factory=class_row(DmRestaurantsObj)) as cur:
             cur.execute(
                 """
                     SELECT 
                         id,
                         object_id,
-                        object_value
-                    FROM stg.ordersystem_users
+                        object_value,
+                        update_ts
+                    FROM stg.ordersystem_restaurants
                     WHERE id > %(threshold)s --Пропускаем те объекты, которые уже загрузили.
                     ORDER BY id ASC --Обязательна сортировка по id, т.к. id используем в качестве курсора.
                     LIMIT %(limit)s; --Обрабатываем только одну пачку объектов.
                 """, {
-                    "threshold": user_threshold,
+                    "threshold": restaurant_threshold,
                     "limit": limit
                 }
             )
@@ -44,36 +48,48 @@ class DmRestaurantsOriginRepository:
         return objs
 
 
-class DmUsersDestRepository:
+class DmRestaurantsDestRepository:
 
-    def insert_user(self, conn: Connection, user: DmUsersDdsObj) -> None:
+    def insert_restaurant(self, conn: Connection, restaurant: DmRestaurantsDdsObj) -> None:
         with conn.cursor() as cur:
+
             cur.execute(
                 """
-                    INSERT INTO dds.dm_users(user_id, user_name, user_login)
-                    VALUES (%(user_id)s, %(user_name)s, %(user_login)s);
+                    update dds.dm_restaurants
+                    set active_to = %(active_from)s
+                    where restaurant_id = %(restaurant_id)s
+                    and active_to = '2099-12-31 00:00:00.000' """,
+                {
+                    "active_from": restaurant.active_from,
+                    "restaurant_id": restaurant.restaurant_id
+                }
+            )
+            cur.execute("""
+                    INSERT INTO dds.dm_restaurants(restaurant_id, restaurant_name, active_from, active_to)
+                    VALUES (%(restaurant_id)s, %(restaurant_name)s, %(active_from)s, %(active_to)s);
                 """,
                 {
-                     "user_id": user.user_id,
-                     "user_name": user.user_name,
-                     "user_login": user.user_login
+                     "restaurant_id": restaurant.restaurant_id,
+                     "restaurant_name": restaurant.restaurant_name,
+                     "active_from": restaurant.active_from, 
+                     "active_to": '2099-12-31 00:00:00.000'
                 },
             )
 
 
-class DmUsersLoader:
-    WF_KEY = "example_users_stg_to_dds_workflow"
+class DmRestaurantsLoader:
+    WF_KEY = "example_restaurants_stg_to_dds_workflow"
     LAST_LOADED_ID_KEY = "last_loaded_id"
     BATCH_LIMIT = 10000  # Рангов мало, но мы хотим продемонстрировать инкрементальную загрузку рангов.
 
     def __init__(self, pg_origin: PgConnect, pg_dest: PgConnect, log: Logger) -> None:
         self.pg_dest = pg_dest
-        self.origin = DmUsersOriginRepository(pg_origin)
-        self.stg = DmUsersDestRepository()
+        self.origin = DmRestaurantsOriginRepository(pg_origin)
+        self.stg = DmRestaurantsDestRepository()
         self.settings_repository = StgEtlSettingsRepository()
         self.log = log
 
-    def load_users(self):
+    def load_restaurants(self):
         # открываем транзакцию.
         # Транзакция будет закоммичена, если код в блоке with пройдет успешно (т.е. без ошибок).
         # Если возникнет ошибка, произойдет откат изменений (rollback транзакции).
@@ -85,27 +101,27 @@ class DmUsersLoader:
             if not wf_setting:
                 wf_setting = EtlSetting(id=0, workflow_key=self.WF_KEY, workflow_settings={self.LAST_LOADED_ID_KEY: -1})
 
-            # Map DmUsersObj to DmUsersDdsObj
-            def map_user(user: DmUsersObj) -> DmUsersDdsObj:
-                object_value_dict = json.loads(user.object_value)
-                return DmUsersDdsObj(
-                user_id=str(object_value_dict["_id"]),
-                user_name=object_value_dict["name"],
-                user_login=object_value_dict["login"]
+            # Map DmRestaurantsObj to DmRestaurantsDdsObj
+            def map_restaurant(restaurant: DmRestaurantsObj) -> DmRestaurantsDdsObj:
+                object_value_dict = json.loads(restaurant.object_value)
+                return DmRestaurantsDdsObj(
+                    restaurant_id=restaurant.object_id,
+                    restaurant_name=object_value_dict["name"],
+                    active_from=restaurant.update_ts
             )
 
             # Вычитываем очередную пачку объектов.
             last_loaded = wf_setting.workflow_settings[self.LAST_LOADED_ID_KEY]
-            load_queue = self.origin.list_users(last_loaded, self.BATCH_LIMIT)
-            self.log.info(f"Found {len(load_queue)} users to load.")
+            load_queue = self.origin.list_restaurants(last_loaded, self.BATCH_LIMIT)
+            self.log.info(f"Found {len(load_queue)} restaurants to load.")
             if not load_queue:
                 self.log.info("Quitting.")
                 return
 
             # Сохраняем объекты в базу dwh.
-            for user in load_queue:
-                mapped_user = map_user(user)
-                self.stg.insert_user(conn, mapped_user)
+            for restaurant in load_queue:
+                mapped_restaurant = map_restaurant(restaurant)
+                self.stg.insert_restaurant(conn, mapped_restaurant)
 
             # Сохраняем прогресс.
             # Мы пользуемся тем же connection, поэтому настройка сохранится вместе с объектами,
