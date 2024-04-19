@@ -54,7 +54,7 @@ class DmProductsOriginRepository:
             cur.execute(
                 """
                     SELECT id
-                    FROM dm_restaurants
+                    FROM dds.dm_restaurants
                     WHERE restaurant_id = %(restaurant_id)s
                     AND active_to = '2099-12-31 00:00:00.000';
                 """,
