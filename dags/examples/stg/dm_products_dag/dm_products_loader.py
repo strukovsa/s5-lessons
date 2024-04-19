@@ -75,7 +75,7 @@ class DmProductsDestRepository:
                 """
                     update dds.dm_products
                     set active_to = %(active_from)s
-                    where product_id = %(restaurant_id)s
+                    where product_id = %(product_id)s
                     and active_to = '2099-12-31 00:00:00.000' """,
                 {
                     "active_from": product.active_from,
