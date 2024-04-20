@@ -79,7 +79,7 @@ class DmProductsDestRepository:
                     and active_to = '2099-12-31 00:00:00.000' """,
                 {
                     "active_from": product.active_from,
-                    "restaurant_id": product.product_id
+                    "product_id": product.product_id
                 }
             )
             cur.execute("""
