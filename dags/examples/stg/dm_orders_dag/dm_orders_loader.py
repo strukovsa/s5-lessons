@@ -70,7 +70,7 @@ class DmOrdersOriginRepository:
                 """
                     SELECT id
                     FROM dds.dm_timestamps
-                    WHERE timestamp_id = %(timestamp_id)s;
+                    WHERE ts = %(timestamp_id)s;
                 """,
                 {"timestamp_id": timestamp_id},
             )
@@ -145,7 +145,8 @@ class DmOrdersLoader:
                 correct_restaurant_id = self.origin.get_restaurant_id(restaurant_id)
                 if correct_restaurant_id is None:
                     raise ValueError(f"Could not find a matching restaurant_id for {restaurant_id}.")
-                timestamp_id = object_value_dict["date"]
+                date_str = object_value_dict["date"]
+                timestamp_id = datetime.strptime(date_str, "%Y-%m-%d %H:%M:%S")
                 correct_timestamp_id = self.origin.get_timestamp_id(timestamp_id)
                 if correct_timestamp_id is None:
                     raise ValueError(f"Could not find a matching timestamp_id for {restaurant_id}.")
