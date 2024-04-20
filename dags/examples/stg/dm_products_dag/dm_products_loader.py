@@ -79,7 +79,7 @@ class DmProductsDestRepository:
                     and active_to = '2099-12-31 00:00:00.000' """,
                 {
                     "active_from": product.active_from,
-                    "restaurant_id": product.restaurant_id
+                    "restaurant_id": product.product_id
                 }
             )
             cur.execute("""
@@ -100,7 +100,7 @@ class DmProductsDestRepository:
 class DmProductsLoader:
     WF_KEY = "example_products_stg_to_dds_workflow"
     LAST_LOADED_ID_KEY = "last_loaded_id"
-    BATCH_LIMIT = 10000  # Рангов мало, но мы хотим продемонстрировать инкрементальную загрузку рангов.
+    BATCH_LIMIT = 1000  # Рангов мало, но мы хотим продемонстрировать инкрементальную загрузку рангов.
 
     def __init__(self, pg_origin: PgConnect, pg_dest: PgConnect, log: Logger) -> None:
         self.pg_dest = pg_dest
