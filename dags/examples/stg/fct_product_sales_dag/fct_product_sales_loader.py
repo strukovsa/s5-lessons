@@ -83,14 +83,14 @@ class FctOriginRepository:
 
 class FctDestRepository:
 
-    def insert_fct(self, conn: Connection, fct: FctDdsObj) -> None:
+    def insert_fct(self, conn: Connection, fcts: List[FctDdsObj]) -> None:
         with conn.cursor() as cur:
-
-            cur.execute("""
+            for fct in fcts:
+                cur.execute("""
                     INSERT INTO dds.fct_product_sales(product_id, order_id, count, price, total_sum, bonus_payment, bonus_grant)
                     VALUES (%(product_id)s, %(order_id)s, %(count)s, %(price)s, %(total_sum)s, %(bonus_payment)s, %(bonus_grant)s);
-                """,
-                {
+                    """,
+                    {
                      "product_id": fct.product_id,
                      "order_id": fct.order_id,
                      "count": fct.count,
@@ -99,23 +99,23 @@ class FctDestRepository:
                      "bonus_payment": fct.bonus_payment,
                      "bonus_grant": fct.bonus_grant,
 
-                },
-            )
+                    },
+                    )
 
 
-class DmOrdersLoader:
-    WF_KEY = "example_orders_stg_to_dds_workflow"
+class DmFctLoader:
+    WF_KEY = "example_fct_stg_to_dds_workflow"
     LAST_LOADED_ID_KEY = "last_loaded_id"
     BATCH_LIMIT = 3000  # Рангов мало, но мы хотим продемонстрировать инкрементальную загрузку рангов.
 
     def __init__(self, pg_origin: PgConnect, pg_dest: PgConnect, log: Logger) -> None:
         self.pg_dest = pg_dest
-        self.origin = DmOrdersOriginRepository(pg_origin)
-        self.stg = DmOrdersDestRepository()
+        self.origin = FctOriginRepository(pg_origin)
+        self.stg = FctDestRepository()
         self.settings_repository = StgEtlSettingsRepository()
         self.log = log
 
-    def load_orders(self):
+    def load_fct(self):
         # открываем транзакцию.
         # Транзакция будет закоммичена, если код в блоке with пройдет успешно (т.е. без ошибок).
         # Если возникнет ошибка, произойдет откат изменений (rollback транзакции).
@@ -127,13 +127,13 @@ class DmOrdersLoader:
             if not wf_setting:
                 wf_setting = EtlSetting(id=0, workflow_key=self.WF_KEY, workflow_settings={self.LAST_LOADED_ID_KEY: -1})
 
-            # Map DmOrdersObj to DmOrdersDdsObj
-            def map_order(order: DmOrdersObj) -> DmOrdersDdsObj:
+            # Map FctObj to FctDdsObj
+            def map_order(order: FctObj) -> List[FctDdsObj]:
                 object_value_dict = json.loads(order.object_value)
-                restaurant_id = object_value_dict["restaurant"]["id"]
-                correct_restaurant_id = self.origin.get_restaurant_id(restaurant_id)
-                if correct_restaurant_id is None:
-                    raise ValueError(f"Could not find a matching restaurant_id for {restaurant_id}.")
+                product_id = [item["id"] for item in object_value_dict["order_items"]]
+                correct_product_id = [self.origin.get_product_id(product_id) for product_id in product_id]
+                if correct_product_id is None:
+                    raise ValueError(f"Could not find a matching product_id for {product_id}.")
                 date_str = object_value_dict["date"]
                 timestamp_id = datetime.strptime(date_str, "%Y-%m-%d %H:%M:%S")
                 correct_timestamp_id = self.origin.get_timestamp_id(timestamp_id)
@@ -144,12 +144,21 @@ class DmOrdersLoader:
                 if correct_user_id is None:
                     raise ValueError(f"Could not find a matching user_id for {user_id}.")
 
-                return DmOrdersDdsObj(
-                order_key=order.object_id,
-                order_status=object_value_dict["final_status"],
-                restaurant_id=correct_restaurant_id,
-                timestamp_id=correct_timestamp_id,
-                user_id=correct_user_id
+                mapped_orders = []
+                for product_id, count, price in zip(correct_product_ids, product_counts, product_prices):
+                    if product_id is not None:
+                    mapped_orders.append(
+                        FctDdsObj(
+                    order_id=correct_order_id,
+                    product_id=product_id,
+                    count=count,
+                    price=price,
+                    total_sum=count * price,
+                    bonus_payment=0,  # replace with actual value
+                    bonus_grant=0,  # replace with actual value
+                )
+            )
+    return mapped_orders
             )
             
 
