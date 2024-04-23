@@ -81,13 +81,30 @@ class FctOriginRepository:
                 return result[0]
         return None
     
-    def get_bonus(self, order_id: str) -> Optional[int]:
+    def get_bonus_payment(self, order_id: str) -> Optional[int]:
         with self._db.client().cursor() as cur:
             cur.execute(
                 """
-                    SELECT id
-                    FROM dds.dm_orders
-                    WHERE order_key = %(order_id)s;
+                    SELECT json_path_query_array(event_value::json, '$.product_payments[*].bonus_payment') AS bonus_payment
+                    FROM stg.bonussystem_events
+                    WHERE event_value::json->>'order_id' = %(order_id)s;
+
+                """,
+                {"order_id": order_id},
+            )
+            result = cur.fetchone()
+            if result:
+                return result[0]
+        return None
+    
+    def get_bonus_grant(self, order_id: str) -> Optional[int]:
+        with self._db.client().cursor() as cur:
+            cur.execute(
+                """
+                    SELECT json_path_query_array(event_value::json, '$.product_payments[*].bonus_grant') AS bonus_grant
+                    FROM stg.bonussystem_events
+                    WHERE event_value::json->>'order_id' = %(order_id)s;
+
                 """,
                 {"order_id": order_id},
             )
@@ -118,7 +135,7 @@ class FctDestRepository:
                     )
 
 
-class DmFctLoader:
+class FctLoader:
     WF_KEY = "example_fct_stg_to_dds_workflow"
     LAST_LOADED_ID_KEY = "last_loaded_id"
     BATCH_LIMIT = 3000  # Рангов мало, но мы хотим продемонстрировать инкрементальную загрузку рангов.
@@ -151,6 +168,7 @@ class DmFctLoader:
                     raise ValueError(f"Could not find a matching product_id for {product_id}.")
                 order_id = fct.object_id
                 correct_order_id = self.origin.get_order_id(order_id)
+                old_order_id = fct.object_id
                 if correct_order_id is None:
                     raise ValueError(f"Could not find a matching order_id for {order_id}.")
 
@@ -164,8 +182,8 @@ class DmFctLoader:
                         count=[item["quantity"] for item in object_value_dict["order_items"]],
                         price=[item["price"] for item in object_value_dict["order_items"]],
                         total_sum=count * price,
-                        bonus_payment=0,  # replace with actual value
-                        bonus_grant=0,  # replace with actual value
+                        bonus_payment=self.origin.get_bonus_payment(old_order_id),
+                        bonus_grant=self.origin.get_bonus_grant(old_order_id),  
                         )
                         )
                 return mapped_fcts
@@ -174,17 +192,17 @@ class DmFctLoader:
 
             # Вычитываем очередную пачку объектов.
             last_loaded = wf_setting.workflow_settings[self.LAST_LOADED_ID_KEY]
-            load_queue = self.origin.list_orders(last_loaded, self.BATCH_LIMIT)
-            self.log.info(f"Found {len(load_queue)} orders to load.")
+            load_queue = self.origin.list_fct(last_loaded, self.BATCH_LIMIT)
+            self.log.info(f"Found {len(load_queue)} fcts to load.")
             if not load_queue:
                 self.log.info("Quitting.")
                 return
 
             # Сохраняем объекты в базу dwh.
-            for order in load_queue:
-                mapped_order = map_order(order)
-                if mapped_order:
-                    self.stg.insert_orders(conn, mapped_order)
+            for fct in load_queue:
+                mapped_fct = map_fct(fct)
+                if mapped_fct:
+                    self.stg.insert_fct(conn, mapped_fct)
 
             # Сохраняем прогресс.
             # Мы пользуемся тем же connection, поэтому настройка сохранится вместе с объектами,
