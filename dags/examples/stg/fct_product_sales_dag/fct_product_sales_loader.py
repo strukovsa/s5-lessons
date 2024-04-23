@@ -72,7 +72,22 @@ class FctOriginRepository:
                 """
                     SELECT id
                     FROM dds.dm_orders
-                    WHERE order_id = %(order_id)s;
+                    WHERE order_key = %(order_id)s;
+                """,
+                {"order_id": order_id},
+            )
+            result = cur.fetchone()
+            if result:
+                return result[0]
+        return None
+    
+    def get_bonus(self, order_id: str) -> Optional[int]:
+        with self._db.client().cursor() as cur:
+            cur.execute(
+                """
+                    SELECT id
+                    FROM dds.dm_orders
+                    WHERE order_key = %(order_id)s;
                 """,
                 {"order_id": order_id},
             )
@@ -128,38 +143,33 @@ class DmFctLoader:
                 wf_setting = EtlSetting(id=0, workflow_key=self.WF_KEY, workflow_settings={self.LAST_LOADED_ID_KEY: -1})
 
             # Map FctObj to FctDdsObj
-            def map_order(order: FctObj) -> List[FctDdsObj]:
-                object_value_dict = json.loads(order.object_value)
+            def map_fct(fct: FctObj) -> List[FctDdsObj]:
+                object_value_dict = json.loads(fct.object_value)
                 product_id = [item["id"] for item in object_value_dict["order_items"]]
                 correct_product_id = [self.origin.get_product_id(product_id) for product_id in product_id]
                 if correct_product_id is None:
                     raise ValueError(f"Could not find a matching product_id for {product_id}.")
-                date_str = object_value_dict["date"]
-                timestamp_id = datetime.strptime(date_str, "%Y-%m-%d %H:%M:%S")
-                correct_timestamp_id = self.origin.get_timestamp_id(timestamp_id)
-                if correct_timestamp_id is None:
-                    raise ValueError(f"Could not find a matching timestamp_id for {restaurant_id}.")
-                user_id = object_value_dict["user"]["id"]
-                correct_user_id = self.origin.get_user_id(user_id)
-                if correct_user_id is None:
-                    raise ValueError(f"Could not find a matching user_id for {user_id}.")
+                order_id = fct.object_id
+                correct_order_id = self.origin.get_order_id(order_id)
+                if correct_order_id is None:
+                    raise ValueError(f"Could not find a matching order_id for {order_id}.")
 
-                mapped_orders = []
-                for product_id, count, price in zip(correct_product_ids, product_counts, product_prices):
+                mapped_fcts = []
+                for product_id, count, price in zip(correct_product_id, count, price):
                     if product_id is not None:
-                    mapped_orders.append(
+                        mapped_fcts.append(
                         FctDdsObj(
-                    order_id=correct_order_id,
-                    product_id=product_id,
-                    count=count,
-                    price=price,
-                    total_sum=count * price,
-                    bonus_payment=0,  # replace with actual value
-                    bonus_grant=0,  # replace with actual value
-                )
-            )
-    return mapped_orders
-            )
+                        order_id=correct_order_id,
+                        product_id=correct_product_id,
+                        count=[item["quantity"] for item in object_value_dict["order_items"]],
+                        price=[item["price"] for item in object_value_dict["order_items"]],
+                        total_sum=count * price,
+                        bonus_payment=0,  # replace with actual value
+                        bonus_grant=0,  # replace with actual value
+                        )
+                        )
+                return mapped_fcts
+                
             
 
             # Вычитываем очередную пачку объектов.
