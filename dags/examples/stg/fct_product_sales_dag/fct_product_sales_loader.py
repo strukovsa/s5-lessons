@@ -85,8 +85,9 @@ class FctOriginRepository:
         with self._db.client().cursor() as cur:
             cur.execute(
                 """
-                    SELECT json_path_query_array(event_value::json, '$.product_payments[*].bonus_payment') AS bonus_payment
-                    FROM stg.bonussystem_events
+                    SELECT product_payment->>'bonus_payment' AS bonus_payment
+                    FROM stg.bonussystem_events,
+                        json_array_elements(event_value::json->'product_payments') AS product_payment
                     WHERE event_value::json->>'order_id' = %(order_id)s;
 
                 """,
@@ -101,8 +102,9 @@ class FctOriginRepository:
         with self._db.client().cursor() as cur:
             cur.execute(
                 """
-                    SELECT json_path_query_array(event_value::json, '$.product_payments[*].bonus_grant') AS bonus_grant
-                    FROM stg.bonussystem_events
+                    SELECT product_payment->>'bonus_grant' AS bonus_grant
+                    FROM stg.bonussystem_events,
+                        json_array_elements(event_value::json->'product_payments') AS product_payment
                     WHERE event_value::json->>'order_id' = %(order_id)s;
 
                 """,
