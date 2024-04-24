@@ -171,6 +171,8 @@ class FctLoader:
                 old_order_id = fct.object_id
                 if correct_order_id is None:
                     raise ValueError(f"Could not find a matching order_id for {order_id}.")
+                count=[item["quantity"] for item in object_value_dict["order_items"]]
+                price=[item["price"] for item in object_value_dict["order_items"]]
 
                 mapped_fcts = []
                 for product_id, count, price in zip(correct_product_id, count, price):
@@ -179,8 +181,8 @@ class FctLoader:
                         FctDdsObj(
                         order_id=correct_order_id,
                         product_id=correct_product_id,
-                        count=[item["quantity"] for item in object_value_dict["order_items"]],
-                        price=[item["price"] for item in object_value_dict["order_items"]],
+                        count=count,
+                        price=price,
                         total_sum=count * price,
                         bonus_payment=self.origin.get_bonus_payment(old_order_id),
                         bonus_grant=self.origin.get_bonus_grant(old_order_id),  
