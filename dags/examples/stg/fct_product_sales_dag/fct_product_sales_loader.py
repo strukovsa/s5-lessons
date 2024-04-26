@@ -164,20 +164,21 @@ class FctLoader:
             # Map FctObj to FctDdsObj
             def map_fct(fct: FctObj) -> List[FctDdsObj]:
                 object_value_dict = json.loads(fct.object_value)
-                product_id = [item["id"] for item in object_value_dict["order_items"]]
-                correct_product_id = [self.origin.get_product_id(product_id) for product_id in product_id]
-                if correct_product_id is None:
-                    raise ValueError(f"Could not find a matching product_id for {product_id}.")
+                product_ids = [item["id"] for item in object_value_dict["order_items"]]
+                correct_product_ids = [self.origin.get_product_id(product_id) for product_id in product_ids]
+                for correct_product_id in correct_product_ids:
+                    if correct_product_id is None:
+                        raise ValueError(f"Could not find a matching product_id for {product_id}.")
                 order_id = fct.object_id
                 correct_order_id = self.origin.get_order_id(order_id)
                 old_order_id = fct.object_id
                 if correct_order_id is None:
                     raise ValueError(f"Could not find a matching order_id for {order_id}.")
-                count=[item["quantity"] for item in object_value_dict["order_items"]]
-                price=[item["price"] for item in object_value_dict["order_items"]]
+                counts=[item["quantity"] for item in object_value_dict["order_items"]]
+                prices=[item["price"] for item in object_value_dict["order_items"]]
 
                 mapped_fcts = []
-                for product_id, count, price in zip(correct_product_id, count, price):
+                for product_id, count, price in zip(correct_product_ids, counts, prices):
                     if product_id is not None:
                         mapped_fcts.append(
                         FctDdsObj(
