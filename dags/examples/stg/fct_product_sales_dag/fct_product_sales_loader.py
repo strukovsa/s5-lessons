@@ -64,7 +64,7 @@ class FctOriginRepository:
             result = cur.fetchone()
             if result:
                 return result[0]
-        return None
+        raise Exception("No result found for the given product_id")
     
     def get_order_id(self, order_id: str) -> Optional[int]:
         with self._db.client().cursor() as cur:
@@ -79,7 +79,7 @@ class FctOriginRepository:
             result = cur.fetchone()
             if result:
                 return result[0]
-        return None
+        raise Exception("No result found for the given order_id")
     
     def get_bonus_payment(self, order_id: str) -> Optional[int]:
         with self._db.client().cursor() as cur:
@@ -96,7 +96,7 @@ class FctOriginRepository:
             result = cur.fetchone()
             if result:
                 return result[0]
-        return None
+        raise Exception("No result found for the given order_id")
     
     def get_bonus_grant(self, order_id: str) -> Optional[int]:
         with self._db.client().cursor() as cur:
@@ -113,7 +113,7 @@ class FctOriginRepository:
             result = cur.fetchone()
             if result:
                 return result[0]
-        return None
+        raise Exception("No result found for the given order_id")
 
 class FctDestRepository:
 
@@ -182,10 +182,10 @@ class FctLoader:
                         mapped_fcts.append(
                         FctDdsObj(
                         order_id=correct_order_id,
-                        product_id=correct_product_id,
-                        count=count,
-                        price=price,
-                        total_sum=count * price,
+                        product_id=int(correct_product_id),
+                        count=int(count),
+                        price=float(price),
+                        total_sum=int(count) * float(price),
                         bonus_payment=self.origin.get_bonus_payment(old_order_id),
                         bonus_grant=self.origin.get_bonus_grant(old_order_id),  
                         )
