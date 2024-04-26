@@ -1,4 +1,4 @@
-from logging import Logger, logging
+from logging import Logger
 from typing import List, Optional
 
 from examples.stg import EtlSetting, StgEtlSettingsRepository
@@ -9,6 +9,7 @@ from psycopg.rows import class_row
 from pydantic import BaseModel
 import json
 from datetime import datetime
+import logging
 
 logging.basicConfig(level=logging.INFO)
 
