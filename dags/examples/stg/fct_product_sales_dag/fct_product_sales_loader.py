@@ -1,4 +1,4 @@
-from logging import Logger
+from logging import Logger, logging
 from typing import List, Optional
 
 from examples.stg import EtlSetting, StgEtlSettingsRepository
@@ -9,6 +9,8 @@ from psycopg.rows import class_row
 from pydantic import BaseModel
 import json
 from datetime import datetime
+
+logging.basicConfig(level=logging.INFO)
 
 class FctObj(BaseModel):
     id: int
@@ -28,6 +30,7 @@ class FctDdsObj(BaseModel):
 class FctOriginRepository:
     def __init__(self, pg: PgConnect) -> None:
         self._db = pg
+        self.logger = logging.getLogger(__name__)
 
     def list_fct(self, order_threshold: int, limit: int) -> List[FctObj]:
         with self._db.client().cursor(row_factory=class_row(FctObj)) as cur:
@@ -67,6 +70,7 @@ class FctOriginRepository:
         raise Exception("No result found for the given product_id")
     
     def get_order_id(self, order_id: str) -> Optional[int]:
+        self.logger.info(f"Getting order ID for order_id: {order_id}")
         with self._db.client().cursor() as cur:
             cur.execute(
                 """
@@ -78,7 +82,9 @@ class FctOriginRepository:
             )
             result = cur.fetchone()
             if result:
+                self.logger.info(f"Found order ID: {result[0]} for order_id: {order_id}")
                 return result[0]
+        self.logger.error(f"No result found for the given order_id: {order_id}")
         raise Exception("No result found for the given order_id")
     
     def get_bonus_payment(self, order_id: str) -> Optional[int]:
