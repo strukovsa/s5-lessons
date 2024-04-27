@@ -7,14 +7,14 @@ from lib.dict_util import json2str
 from psycopg import Connection
 from psycopg.rows import class_row
 from pydantic import BaseModel
-import datetime
+from datetime import date
 
 
 class SetObj(BaseModel):
     id: int
     restaurant_id: int
     restaurant_name: str
-    settlement_date: datetime
+    settlement_date: date
     orders_count: int
     orders_total_sum: float
     orders_bonus_payment_sum: float
