@@ -31,21 +31,24 @@ class SetOriginRepository:
         with self._db.client().cursor(row_factory=class_row(SetObj)) as cur:
             cur.execute(
                 """
-                    select df.restaurant_id,
+                    select o.restaurant_id,
+                        r.restaurant_name,
+                        t.date as settlement_date,
+                        count(f.order_id)) as orders_count,
+                        SUM(f.total_sum) as orders_total_sum,
+                        SUM(f.bonus_payment) as orders_bonus_payment_sum,
+                        SUM(f.bonus_grant) as orders_bonus_granted_sum,
+                        f.orders_total_sum * 0.25 as order_processing_fee,
+                        (f.orders_total_sum * 0.75 - f.orders_bonus_payment_sum) as restaurant_reward_sum
        
-from (
-           select id,
-           cast(object_value::json->>'_id' as varchar) as ord_id,
-           cast(object_value::json->>'bonus_payment' as float) as bonus_payment,
-           cast(object_value::json->>'bonus_grant' as float) as bonus_grant,
-           cast(json_array_elements((object_value::json ->> 'order_items')::json)->>'price' as float) as price,
-           cast(json_array_elements((object_value::json ->> 'order_items')::json)->>'quantity' as int) as quantity,
-           cast(json_array_elements((object_value::json ->> 'order_items')::json)->>'name' as varchar) as prod_name
-           from stg.ordersystem_orders) df
-                left join dds.dm_products p on p.product_name = df.prod_name
-                left join dds.dm_orders o on o.order_key = df.ord_id
-                    WHERE df.id > %(threshold)s --Пропускаем те объекты, которые уже загрузили.
-                    ORDER BY df.id ASC --Обязательна сортировка по id, т.к. id используем в качестве курсора.
+                    from dds.fct_product_sales
+                    left join dds.dm_restaurants r on r.restaurant_id = f.restaurant_id
+                    left join dds.dm_orders o on o.order_id = f.order_id
+                    left join dds.dm_timsetamps t on t.timestamp_id = o.timestamp_id
+                        WHERE o.restaurant_id > %(threshold)s AND
+                        o.order_status = 'CLOSED'
+                    GROUP BY o.restaurant_id) --Пропускаем те объекты, которые уже загрузили.
+                    ORDER BY o.restaurant_id ASC --Обязательна сортировка по id, т.к. id используем в качестве курсора.
                     LIMIT %(limit)s; --Обрабатываем только одну пачку объектов.
                 """, {
                     "threshold": rest_threshold,
@@ -63,7 +66,7 @@ class FctDestRepository:
             cur.execute(
                 """
                     INSERT INTO dds.fct_product_sales(product_id, order_id, count, price, total_sum, bonus_payment, bonus_grant)
-                    VALUES (%(product_id)s, %(order_id)s, %(count)s, %(price)s, %(total_sum)s, %(bonus_payment)s, %(bonus_grant)s);
+                    VALUES (%(product_id)s, %(order_id)s, current_timestamp, %(count)s, %(price)s, %(total_sum)s, %(bonus_payment)s, %(bonus_grant)s);
                 """,
                 {
                      "product_id": rest.product_id,
