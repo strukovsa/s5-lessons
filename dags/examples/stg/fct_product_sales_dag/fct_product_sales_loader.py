@@ -1,6 +1,5 @@
 from logging import Logger
 from typing import List
-from datetime import datetime
 
 from examples.stg import EtlSetting, StgEtlSettingsRepository
 from lib import PgConnect
@@ -49,9 +48,11 @@ from (
                 left join dds.dm_products p on p.product_name = df.prod_name
                 left join dds.dm_orders o on o.order_key = df.ord_id
                     WHERE df.id > %(threshold)s --Пропускаем те объекты, которые уже загрузили.
-                    ORDER BY df.id ASC --Обязательна сортировка по id, т.к. id используем в качестве курсора.;
+                    ORDER BY df.id ASC --Обязательна сортировка по id, т.к. id используем в качестве курсора.
+                    LIMIT %(limit)s; --Обрабатываем только одну пачку объектов.
                 """, {
-                    "threshold": rest_threshold
+                    "threshold": rest_threshold,
+                    "limit": limit
                 }
             )
             objs = cur.fetchall()
