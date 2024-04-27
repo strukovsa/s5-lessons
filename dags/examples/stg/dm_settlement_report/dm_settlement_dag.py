@@ -8,6 +8,7 @@ from examples.stg.dm_timestamps_dag.dm_timestamps_loader import DmTimestampsLoad
 from examples.stg.dm_products_dag.dm_products_loader import DmProductsLoader
 from examples.stg.dm_orders_dag.dm_orders_loader import DmOrdersLoader
 from examples.stg.fct_product_sales_dag.fct_product_sales_loader import FctLoader
+from examples.stg.dm_settlement_report.dm_settlement_loader import SetLoader
 from lib import ConnectionBuilder
 
 log = logging.getLogger(__name__)
@@ -19,7 +20,7 @@ log = logging.getLogger(__name__)
     tags=['sprint5', 'stg', 'origin', 'example'],  # Теги, используются для фильтрации в интерфейсе Airflow.
     is_paused_upon_creation=True  # Остановлен/запущен при появлении. Сразу запущен.
 )
-def sprint5_example_dds_fct_dag():
+def sprint5_example_dds_cdm_dag():
     # Создаем подключение к базе dwh.
     dwh_pg_connect = ConnectionBuilder.pg_conn("PG_WAREHOUSE_CONNECTION")
 
@@ -60,6 +61,12 @@ def sprint5_example_dds_fct_dag():
         fct_loader = FctLoader(dwh_pg_connect, dwh_pg_connect, log)
         fct_loader.load_fct()  # Вызываем функцию, которая перельет данные.
 
+    @task(task_id="set_load")
+    def load_set():
+        # создаем экземпляр класса, в котором реализована логика.
+        set_loader = SetLoader(dwh_pg_connect, dwh_pg_connect, log)
+        set_loader.load_set()  # Вызываем функцию, которая перельет данные.
+
     # Инициализируем объявленные таски.
     users_dict = load_users()
     restaurants_dict = load_restaurants()
@@ -67,11 +74,12 @@ def sprint5_example_dds_fct_dag():
     products_dict = load_products()
     orders_dict = load_orders()
     fct_dict = load_fct()
+    set_dict = load_set()
 
     # Далее задаем последовательность выполнения тасков.
     # Т.к. таск один, просто обозначим его здесь.
-    users_dict >> restaurants_dict >> timestamps_dict >> products_dict >> orders_dict >> fct_dict # type: ignore
+    users_dict >> restaurants_dict >> timestamps_dict >> products_dict >> orders_dict >> fct_dict >> set_dict # type: ignore
 
 
-stg_dds_fct_dag = sprint5_example_dds_fct_dag()
+stg_dds_cdm_dag = sprint5_example_dds_cdm_dag()
 

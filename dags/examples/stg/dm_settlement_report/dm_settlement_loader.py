@@ -41,13 +41,12 @@ class SetOriginRepository:
                         f.orders_total_sum * 0.25 as order_processing_fee,
                         (f.orders_total_sum * 0.75 - f.orders_bonus_payment_sum) as restaurant_reward_sum
        
-                    from dds.fct_product_sales
-                    left join dds.dm_restaurants r on r.restaurant_id = f.restaurant_id
-                    left join dds.dm_orders o on o.order_id = f.order_id
+                    from dds.fct_product_sales f
+                    left join dds.dm_orders o on o.id = f.order_id
+                    left join dds.dm_restaurants r on r.restaurant_id = o.restaurant_id
                     left join dds.dm_timsetamps t on t.timestamp_id = o.timestamp_id
-                        WHERE o.restaurant_id > %(threshold)s AND
-                        o.order_status = 'CLOSED'
-                    GROUP BY o.restaurant_id) --Пропускаем те объекты, которые уже загрузили.
+                    WHERE o.restaurant_id > %(threshold)s AND o.order_status = 'CLOSED'
+                    GROUP BY o.restaurant_id --Пропускаем те объекты, которые уже загрузили.
                     ORDER BY o.restaurant_id ASC --Обязательна сортировка по id, т.к. id используем в качестве курсора.
                     LIMIT %(limit)s; --Обрабатываем только одну пачку объектов.
                 """, {
@@ -59,40 +58,45 @@ class SetOriginRepository:
         return objs
 
 
-class FctDestRepository:
+class SetDestRepository:
 
-    def insert_fct(self, conn: Connection, rest: FctObj) -> None:
+    def insert_set(self, conn: Connection, rest: SetObj) -> None:
         with conn.cursor() as cur:
             cur.execute(
                 """
-                    INSERT INTO dds.fct_product_sales(product_id, order_id, count, price, total_sum, bonus_payment, bonus_grant)
-                    VALUES (%(product_id)s, %(order_id)s, current_timestamp, %(count)s, %(price)s, %(total_sum)s, %(bonus_payment)s, %(bonus_grant)s);
+                    INSERT INTO cdm.dm_settlement(restaurant_id, restaurant_name, settlement_date, orders_count, orders_total_sum, orders_bonus_payment_sum, orders_bonus_granted_sum, order_processing_fee, restaurant_reward_sum)
+                    VALUES (%(restaurant_id)s, %(restaurant_name)s, %(settlement_date)s, %(orders_count)s, %(orders_total_sum)s, %(orders_bonus_payment_sum)s, %(orders_bonus_granted_sum)s, %(order_processing_fee)s, %(restaurant_reward_sum)s);
                 """,
                 {
-                     "product_id": rest.product_id,
-                     "order_id": rest.order_id,
-                     "count": rest.count,
-                     "price": rest.price,
-                     "total_sum": rest.total_sum,
-                     "bonus_payment": rest.bonus_payment,
-                     "bonus_grant": rest.bonus_grant
+                     "restaurant_id": rest.restaurant_id,
+                     "restaurant_name": rest.restaurant_name,
+                     "settlement_date": rest.settlement_date,
+                     "orders_count": rest.orders_count,
+                     "orders_total_sum": rest.orders_total_sum,
+                     "orders_bonus_payment_sum": rest.orders_bonus_payment_sum,
+                     "orders_bonus_granted_sum": rest.orders_bonus_granted_sum,
+                     "order_processing_fee": rest.order_processing_fee,
+                     "orders_restaurant_reward_sum": rest.restaurant_reward_sum
+
+                    ,
+
                 },
             )
 
 
-class FctLoader:
+class SetLoader:
     WF_KEY = "sales"
     LAST_LOADED_ID_KEY = "last_loaded_id"
     BATCH_LIMIT = 1000  # Рангов мало, но мы хотим продемонстрировать инкрементальную загрузку рангов.
 
     def __init__(self, pg_origin: PgConnect, pg_dest: PgConnect, log: Logger) -> None:
         self.pg_dest = pg_dest
-        self.origin = FctOriginRepository(pg_origin)
-        self.stg = FctDestRepository()
+        self.origin = SetOriginRepository(pg_origin)
+        self.stg = SetDestRepository()
         self.settings_repository = StgEtlSettingsRepository()
         self.log = log
 
-    def load_fct(self):
+    def load_set(self):
         # открываем транзакцию.
         # Транзакция будет закоммичена, если код в блоке with пройдет успешно (т.е. без ошибок).
         # Если возникнет ошибка, произойдет откат изменений (rollback транзакции).
@@ -106,15 +110,15 @@ class FctLoader:
 
             # Вычитываем очередную пачку объектов.
             last_loaded = wf_setting.workflow_settings[self.LAST_LOADED_ID_KEY]
-            load_queue = self.origin.list_fct(last_loaded, self.BATCH_LIMIT)
-            self.log.info(f"Found {len(load_queue)} fct to load.")
+            load_queue = self.origin.list_set(last_loaded, self.BATCH_LIMIT)
+            self.log.info(f"Found {len(load_queue)} set to load.")
             if not load_queue:
                 self.log.info("Quitting.")
                 return
 
             # Сохраняем объекты в базу dwh.
             for rest in load_queue:
-                self.stg.insert_fct(conn, rest)
+                self.stg.insert_set(conn, rest)
 
             # Сохраняем прогресс.
             # Мы пользуемся тем же connection, поэтому настройка сохранится вместе с объектами,
