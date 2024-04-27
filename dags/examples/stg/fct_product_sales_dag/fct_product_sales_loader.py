@@ -10,7 +10,7 @@ from psycopg.rows import class_row
 from pydantic import BaseModel
 
 
-class RestObj(BaseModel):
+class FctObj(BaseModel):
     id: int
     product_id: int
     order_id: int
@@ -21,12 +21,12 @@ class RestObj(BaseModel):
     bonus_grant: float
 
 
-class RestOriginRepository:
+class FctOriginRepository:
     def __init__(self, pg: PgConnect) -> None:
         self._db = pg
 
-    def list_rest(self, rest_threshold: int, limit: int) -> List[RestObj]:
-        with self._db.client().cursor(row_factory=class_row(RestObj)) as cur:
+    def list_fct(self, rest_threshold: int, limit: int) -> List[FctObj]:
+        with self._db.client().cursor(row_factory=class_row(FctObj)) as cur:
             cur.execute(
                 """
                     select df.id,
@@ -58,9 +58,9 @@ from (
         return objs
 
 
-class RestDestRepository:
+class FctDestRepository:
 
-    def insert_rest(self, conn: Connection, rest: RestObj) -> None:
+    def insert_fct(self, conn: Connection, rest: FctObj) -> None:
         with conn.cursor() as cur:
             cur.execute(
                 """
@@ -79,19 +79,19 @@ class RestDestRepository:
             )
 
 
-class RestLoader:
+class FctLoader:
     WF_KEY = "sales"
     LAST_LOADED_ID_KEY = "last_loaded_id"
     BATCH_LIMIT = 1000  # Рангов мало, но мы хотим продемонстрировать инкрементальную загрузку рангов.
 
     def __init__(self, pg_origin: PgConnect, pg_dest: PgConnect, log: Logger) -> None:
         self.pg_dest = pg_dest
-        self.origin = RestOriginRepository(pg_origin)
-        self.stg = RestDestRepository()
+        self.origin = FctOriginRepository(pg_origin)
+        self.stg = FctDestRepository()
         self.settings_repository = StgEtlSettingsRepository()
         self.log = log
 
-    def load_rest(self):
+    def load_fct(self):
         # открываем транзакцию.
         # Транзакция будет закоммичена, если код в блоке with пройдет успешно (т.е. без ошибок).
         # Если возникнет ошибка, произойдет откат изменений (rollback транзакции).
@@ -105,15 +105,15 @@ class RestLoader:
 
             # Вычитываем очередную пачку объектов.
             last_loaded = wf_setting.workflow_settings[self.LAST_LOADED_ID_KEY]
-            load_queue = self.origin.list_rest(last_loaded, self.BATCH_LIMIT)
-            self.log.info(f"Found {len(load_queue)} rest to load.")
+            load_queue = self.origin.list_fct(last_loaded, self.BATCH_LIMIT)
+            self.log.info(f"Found {len(load_queue)} fct to load.")
             if not load_queue:
                 self.log.info("Quitting.")
                 return
 
             # Сохраняем объекты в базу dwh.
             for rest in load_queue:
-                self.stg.insert_rest(conn, rest)
+                self.stg.insert_fct(conn, rest)
 
             # Сохраняем прогресс.
             # Мы пользуемся тем же connection, поэтому настройка сохранится вместе с объектами,
