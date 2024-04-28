@@ -11,7 +11,6 @@ from datetime import date
 
 
 class SetObj(BaseModel):
-    id: int
     restaurant_id: int
     restaurant_name: str
     settlement_date: date
