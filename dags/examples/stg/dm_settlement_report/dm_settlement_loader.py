@@ -43,8 +43,8 @@ class SetOriginRepository:
        
                     from dds.fct_product_sales f
                     left join dds.dm_orders o on o.id = f.order_id
-                    left join dds.dm_restaurants r on r.restaurant_id = o.restaurant_id
-                    left join dds.dm_timsetamps t on t.timestamp_id = o.timestamp_id
+                    left join dds.dm_restaurants r on r.id = o.restaurant_id
+                    left join dds.dm_timsetamps t on t.id = o.timestamp_id
                     WHERE o.restaurant_id > %(threshold)s AND o.order_status = 'CLOSED'
                     GROUP BY o.restaurant_id --Пропускаем те объекты, которые уже загрузили.
                     ORDER BY o.restaurant_id ASC --Обязательна сортировка по id, т.к. id используем в качестве курсора.
