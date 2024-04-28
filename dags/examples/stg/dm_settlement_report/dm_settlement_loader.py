@@ -31,7 +31,8 @@ class SetOriginRepository:
         with self._db.client().cursor(row_factory=class_row(SetObj)) as cur:
             cur.execute(
                 """
-                    select o.restaurant_id,
+                    select f.id,
+                        o.restaurant_id,
                         r.restaurant_name,
                         t.date as settlement_date,
                         count(f.order_id) as orders_count,
@@ -45,7 +46,7 @@ class SetOriginRepository:
                     left join dds.dm_orders o on o.id = f.order_id
                     left join dds.dm_restaurants r on r.id = o.restaurant_id
                     left join dds.dm_timestamps t on t.id = o.timestamp_id
-                    WHERE o.restaurant_id > %(threshold)s AND o.order_status = 'CLOSED'
+                    WHERE f.id > %(threshold)s AND o.order_status = 'CLOSED'
                     GROUP BY o.restaurant_id, r.restaurant_name, t.date --Пропускаем те объекты, которые уже загрузили.
                     ORDER BY o.restaurant_id ASC --Обязательна сортировка по id, т.к. id используем в качестве курсора.
                     LIMIT %(limit)s; --Обрабатываем только одну пачку объектов.
