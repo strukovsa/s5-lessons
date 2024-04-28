@@ -120,13 +120,15 @@ class SetLoader:
                 return
 
             # Сохраняем объекты в базу dwh.
+            loaded_ids = []
             for set in load_queue:
                 self.stg.insert_set(conn, set)
+                loaded_ids.append(set.id)
 
             # Сохраняем прогресс.
             # Мы пользуемся тем же connection, поэтому настройка сохранится вместе с объектами,
             # либо откатятся все изменения целиком.
-            wf_setting.workflow_settings[self.LAST_LOADED_ID_KEY] = max([t.id for t in load_queue])
+            wf_setting.workflow_settings[self.LAST_LOADED_ID_KEY] = max(loaded_ids) if loaded_ids else -1
             wf_setting_json = json2str(wf_setting.workflow_settings)  # Преобразуем к строке, чтобы положить в БД.
             self.settings_repository.save_setting(conn, wf_setting.workflow_key, wf_setting_json)
 
