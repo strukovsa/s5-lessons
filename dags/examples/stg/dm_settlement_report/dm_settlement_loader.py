@@ -34,7 +34,7 @@ class SetOriginRepository:
                     select o.restaurant_id,
                         r.restaurant_name,
                         t.date as settlement_date,
-                        count(f.order_id)) as orders_count,
+                        count(f.order_id) as orders_count,
                         SUM(f.total_sum) as orders_total_sum,
                         SUM(f.bonus_payment) as orders_bonus_payment_sum,
                         SUM(f.bonus_grant) as orders_bonus_granted_sum,
