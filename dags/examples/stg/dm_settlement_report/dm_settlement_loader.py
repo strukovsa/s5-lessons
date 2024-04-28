@@ -47,7 +47,7 @@ class SetOriginRepository:
                     left join dds.dm_restaurants r on r.id = o.restaurant_id
                     left join dds.dm_timestamps t on t.id = o.timestamp_id
                     WHERE f.id > %(threshold)s AND o.order_status = 'CLOSED'
-                    GROUP BY o.restaurant_id, r.restaurant_name, t.date --Пропускаем те объекты, которые уже загрузили.
+                    GROUP BY f.id, o.restaurant_id, r.restaurant_name, t.date --Пропускаем те объекты, которые уже загрузили.
                     ORDER BY o.restaurant_id ASC --Обязательна сортировка по id, т.к. id используем в качестве курсора.
                     LIMIT %(limit)s; --Обрабатываем только одну пачку объектов.
                 """, {
