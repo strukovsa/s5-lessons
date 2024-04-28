@@ -31,7 +31,7 @@ class SetOriginRepository:
         with self._db.client().cursor(row_factory=class_row(SetObj)) as cur:
             cur.execute(
                 """
-                    select MAX(f.id),
+                    select MAX(f.id) as id,
                         o.restaurant_id,
                         r.restaurant_name,
                         t.date as settlement_date,
