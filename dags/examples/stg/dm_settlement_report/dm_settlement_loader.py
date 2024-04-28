@@ -31,32 +31,35 @@ class SetOriginRepository:
         with self._db.client().cursor(row_factory=class_row(SetObj)) as cur:
             cur.execute(
                 """
-                    select MAX(f.id) as id,
-                    o.restaurant_id,
-                    r.restaurant_name,
-                    t.date as settlement_date,
-                    count(f.order_id) as orders_count,
-                    SUM(f.total_sum) as orders_total_sum,
-                    COALESCE(SUM(bonus.bonus_payment), 0) as orders_bonus_payment_sum,
-                    COALESCE(SUM(bonus.bonus_grant), 0) as orders_bonus_granted_sum,
-                    (SUM(f.total_sum) * 0.25) as order_processing_fee,
-                    (SUM(f.total_sum) * 0.75 - COALESCE(SUM(bonus.bonus_payment), 0)) as restaurant_reward_sum
+                    select MAX(f.m_id) as id,
+                        o.restaurant_id,
+                        r.restaurant_name,
+                        t.date as settlement_date,
+                        count(f.order_id) as orders_count,
+                        SUM(f.sum) as orders_total_sum,
+                        SUM(f.b_payment) as orders_bonus_payment_sum,
+                        SUM(f.b_grant) as orders_bonus_granted_sum,
+                        (SUM(f.sum) * 0.25) as order_processing_fee,
+                        (SUM(f.sum) * 0.75 - SUM(f.b_payment)) as restaurant_reward_sum
 
-                from dds.fct_product_sales f
-                left join dds.dm_orders o on o.id = f.order_id
-                left join dds.dm_restaurants r on r.id = o.restaurant_id
-                left join dds.dm_timestamps t on t.id = o.timestamp_id
-                left join (
-                    select order_id,
-                           MAX(bonus_payment) as bonus_payment,
-                           MAX(bonus_grant) as bonus_grant
-                    from dds.fct_product_sales
-                    group by order_id
-                ) bonus on bonus.order_id = f.order_id
-                WHERE f.id > %(threshold)s AND o.order_status = 'CLOSED'
-                GROUP BY o.restaurant_id, r.restaurant_name, t.date
-                ORDER BY o.restaurant_id ASC
-                LIMIT %(limit)s; --Обрабатываем только одну пачку объектов.
+                    from (SELECT MAX(id) as m_id,
+                            order_id,
+                            SUM(total_sum) sum,
+                            MAX(bonus_payment) as b_payment,
+                            MAX(bonus_grant) as b_grant
+                            from dds.fct_product_sales
+                            where order_id IN (SELECT id
+                                                FROM dds.dm_orders
+                                                WHERE order_status = 'CLOSED')
+                            group by order_id)
+                        GROUP BY order_id) f
+                    left join dds.dm_orders o on o.id = f.order_id
+                    left join dds.dm_restaurants r on r.id = o.restaurant_id
+                    left join dds.dm_timestamps t on t.id = o.timestamp_id
+                    WHERE f.id > %(threshold)s AND o.order_status = 'CLOSED'
+                    GROUP BY o.restaurant_id, r.restaurant_name, t.date
+                    ORDER BY o.restaurant_id ASC
+                    LIMIT %(limit)s; --Обрабатываем только одну пачку объектов.
                 """, {
                     "threshold": set_threshold,
                     "limit": limit
