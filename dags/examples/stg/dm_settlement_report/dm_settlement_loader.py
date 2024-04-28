@@ -55,7 +55,7 @@ class SetOriginRepository:
                     left join dds.dm_orders o on o.id = f.order_id
                     left join dds.dm_restaurants r on r.id = o.restaurant_id
                     left join dds.dm_timestamps t on t.id = o.timestamp_id
-                    WHERE f.id > %(threshold)s AND o.order_status = 'CLOSED'
+                    WHERE MAX(f.m_id) > %(threshold)s AND o.order_status = 'CLOSED'
                     GROUP BY o.restaurant_id, r.restaurant_name, t.date
                     ORDER BY o.restaurant_id ASC
                     LIMIT %(limit)s; --Обрабатываем только одну пачку объектов.
