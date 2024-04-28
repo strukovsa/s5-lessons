@@ -31,7 +31,7 @@ class SetOriginRepository:
         with self._db.client().cursor(row_factory=class_row(SetObj)) as cur:
             cur.execute(
                 """
-                    select MAX(f.id),
+                    select COALESCE(MAX(f.id), -1),
                         o.restaurant_id,
                         r.restaurant_name,
                         t.date as settlement_date,
