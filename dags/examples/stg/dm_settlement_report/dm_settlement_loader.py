@@ -67,7 +67,15 @@ class SetDestRepository:
                 """
                     INSERT INTO cdm.dm_settlement_report(restaurant_id, restaurant_name, settlement_date, orders_count, orders_total_sum, orders_bonus_payment_sum, orders_bonus_granted_sum, order_processing_fee, restaurant_reward_sum)
                     VALUES (%(restaurant_id)s, %(restaurant_name)s, %(settlement_date)s, %(orders_count)s, %(orders_total_sum)s, %(orders_bonus_payment_sum)s, %(orders_bonus_granted_sum)s, %(order_processing_fee)s, %(restaurant_reward_sum)s)
-                    
+                    ON CONFLICT (restaurant_id, settlement_date)
+                    DO UPDATE SET
+                        restaurant_name = EXCLUDED.restaurant_name,
+                        orders_count = EXCLUDED.orders_count,
+                        orders_total_sum = EXCLUDED.orders_total_sum,
+                        orders_bonus_payment_sum = EXCLUDED.orders_bonus_payment_sum,
+                        orders_bonus_granted_sum = EXCLUDED.orders_bonus_granted_sum,
+                        order_processing_fee = EXCLUDED.order_processing_fee,
+                        restaurant_reward_sum = EXCLUDED.restaurant_reward_sum;
                 """,
                 {
                      "restaurant_id": set.restaurant_id,
