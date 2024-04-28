@@ -38,13 +38,13 @@ class SetOriginRepository:
                         SUM(f.total_sum) as orders_total_sum,
                         SUM(f.bonus_payment) as orders_bonus_payment_sum,
                         SUM(f.bonus_grant) as orders_bonus_granted_sum,
-                        f.orders_total_sum * 0.25 as order_processing_fee,
+                        (f.orders_total_sum * 0.25) as order_processing_fee,
                         (f.orders_total_sum * 0.75 - f.orders_bonus_payment_sum) as restaurant_reward_sum
        
                     from dds.fct_product_sales f
                     left join dds.dm_orders o on o.id = f.order_id
                     left join dds.dm_restaurants r on r.id = o.restaurant_id
-                    left join dds.dm_timsetamps t on t.id = o.timestamp_id
+                    left join dds.dm_timestamps t on t.id = o.timestamp_id
                     WHERE o.restaurant_id > %(threshold)s AND o.order_status = 'CLOSED'
                     GROUP BY o.restaurant_id --Пропускаем те объекты, которые уже загрузили.
                     ORDER BY o.restaurant_id ASC --Обязательна сортировка по id, т.к. id используем в качестве курсора.
