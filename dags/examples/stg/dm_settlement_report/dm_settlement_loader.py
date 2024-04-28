@@ -38,8 +38,8 @@ class SetOriginRepository:
                         SUM(f.total_sum) as orders_total_sum,
                         SUM(f.bonus_payment) as orders_bonus_payment_sum,
                         SUM(f.bonus_grant) as orders_bonus_granted_sum,
-                        (f.orders_total_sum * 0.25) as order_processing_fee,
-                        (f.orders_total_sum * 0.75 - f.orders_bonus_payment_sum) as restaurant_reward_sum
+                        (SUM(f.total_sum) * 0.25) as order_processing_fee,
+                        (SUM(f.total_sum) * 0.75 - SUM(f.bonus_payment)) as restaurant_reward_sum
        
                     from dds.fct_product_sales f
                     left join dds.dm_orders o on o.id = f.order_id
