@@ -51,8 +51,7 @@ class SetOriginRepository:
                             where order_id IN (SELECT id
                                                 FROM dds.dm_orders
                                                 WHERE order_status = 'CLOSED')
-                            group by order_id)
-                        GROUP BY order_id) f
+                            group by order_id) f
                     left join dds.dm_orders o on o.id = f.order_id
                     left join dds.dm_restaurants r on r.id = o.restaurant_id
                     left join dds.dm_timestamps t on t.id = o.timestamp_id
