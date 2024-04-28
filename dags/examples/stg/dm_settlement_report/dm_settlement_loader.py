@@ -11,6 +11,7 @@ from datetime import date
 
 
 class SetObj(BaseModel):
+    id: int
     restaurant_id: int
     restaurant_name: str
     settlement_date: date
@@ -63,8 +64,9 @@ class SetDestRepository:
         with conn.cursor() as cur:
             cur.execute(
                 """
-                    INSERT INTO cdm.dm_settlement_report(restaurant_id, restaurant_name, settlement_date, orders_count, orders_total_sum, orders_bonus_payment_sum, orders_bonus_granted_sum, order_processing_fee, restaurant_reward_sum)
-                    VALUES (%(restaurant_id)s, %(restaurant_name)s, %(settlement_date)s, %(orders_count)s, %(orders_total_sum)s, %(orders_bonus_payment_sum)s, %(orders_bonus_granted_sum)s, %(order_processing_fee)s, %(restaurant_reward_sum)s);
+                    INSERT INTO cdm.dm_settlement_report(id, restaurant_id, restaurant_name, settlement_date, orders_count, orders_total_sum, orders_bonus_payment_sum, orders_bonus_granted_sum, order_processing_fee, restaurant_reward_sum)
+                    VALUES (DEFAULT, %(restaurant_id)s, %(restaurant_name)s, %(settlement_date)s, %(orders_count)s, %(orders_total_sum)s, %(orders_bonus_payment_sum)s, %(orders_bonus_granted_sum)s, %(order_processing_fee)s, %(restaurant_reward_sum)s)
+                    RETURNING id;
                 """,
                 {
                      "restaurant_id": set.restaurant_id,
@@ -81,6 +83,7 @@ class SetDestRepository:
 
                 },
             )
+            set.id = cur.fetchone()[0]
 
 
 class SetLoader:
@@ -122,7 +125,7 @@ class SetLoader:
             # Сохраняем прогресс.
             # Мы пользуемся тем же connection, поэтому настройка сохранится вместе с объектами,
             # либо откатятся все изменения целиком.
-            wf_setting.workflow_settings[self.LAST_LOADED_ID_KEY] = max([t.restaurant_id for t in load_queue])
+            wf_setting.workflow_settings[self.LAST_LOADED_ID_KEY] = max([t.id for t in load_queue])
             wf_setting_json = json2str(wf_setting.workflow_settings)  # Преобразуем к строке, чтобы положить в БД.
             self.settings_repository.save_setting(conn, wf_setting.workflow_key, wf_setting_json)
 
