@@ -27,7 +27,7 @@ class SetOriginRepository:
     def __init__(self, pg: PgConnect) -> None:
         self._db = pg
 
-    def list_set(self, rest_threshold: int, limit: int) -> List[SetObj]:
+    def list_set(self, set_threshold: int, limit: int) -> List[SetObj]:
         with self._db.client().cursor(row_factory=class_row(SetObj)) as cur:
             cur.execute(
                 """
@@ -50,7 +50,7 @@ class SetOriginRepository:
                     ORDER BY o.restaurant_id ASC --Обязательна сортировка по id, т.к. id используем в качестве курсора.
                     LIMIT %(limit)s; --Обрабатываем только одну пачку объектов.
                 """, {
-                    "threshold": rest_threshold,
+                    "threshold": set_threshold,
                     "limit": limit
                 }
             )
@@ -60,7 +60,7 @@ class SetOriginRepository:
 
 class SetDestRepository:
 
-    def insert_set(self, conn: Connection, rest: SetObj) -> None:
+    def insert_set(self, conn: Connection, set: SetObj) -> None:
         with conn.cursor() as cur:
             cur.execute(
                 """
@@ -68,15 +68,15 @@ class SetDestRepository:
                     VALUES (%(restaurant_id)s, %(restaurant_name)s, %(settlement_date)s, %(orders_count)s, %(orders_total_sum)s, %(orders_bonus_payment_sum)s, %(orders_bonus_granted_sum)s, %(order_processing_fee)s, %(restaurant_reward_sum)s);
                 """,
                 {
-                     "restaurant_id": rest.restaurant_id,
-                     "restaurant_name": rest.restaurant_name,
-                     "settlement_date": rest.settlement_date,
-                     "orders_count": rest.orders_count,
-                     "orders_total_sum": rest.orders_total_sum,
-                     "orders_bonus_payment_sum": rest.orders_bonus_payment_sum,
-                     "orders_bonus_granted_sum": rest.orders_bonus_granted_sum,
-                     "order_processing_fee": rest.order_processing_fee,
-                     "orders_restaurant_reward_sum": rest.restaurant_reward_sum
+                     "restaurant_id": set.restaurant_id,
+                     "restaurant_name": set.restaurant_name,
+                     "settlement_date": set.settlement_date,
+                     "orders_count": set.orders_count,
+                     "orders_total_sum": set.orders_total_sum,
+                     "orders_bonus_payment_sum": set.orders_bonus_payment_sum,
+                     "orders_bonus_granted_sum": set.orders_bonus_granted_sum,
+                     "order_processing_fee": set.order_processing_fee,
+                     "restaurant_reward_sum": set.restaurant_reward_sum
 
                     ,
 
@@ -85,7 +85,7 @@ class SetDestRepository:
 
 
 class SetLoader:
-    WF_KEY = "sales"
+    WF_KEY = "example_dds_cdm_dag"
     LAST_LOADED_ID_KEY = "last_loaded_id"
     BATCH_LIMIT = 1000  # Рангов мало, но мы хотим продемонстрировать инкрементальную загрузку рангов.
 
@@ -117,8 +117,8 @@ class SetLoader:
                 return
 
             # Сохраняем объекты в базу dwh.
-            for rest in load_queue:
-                self.stg.insert_set(conn, rest)
+            for set in load_queue:
+                self.stg.insert_set(conn, set)
 
             # Сохраняем прогресс.
             # Мы пользуемся тем же connection, поэтому настройка сохранится вместе с объектами,
