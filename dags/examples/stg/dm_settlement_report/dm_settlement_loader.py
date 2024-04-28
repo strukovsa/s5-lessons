@@ -31,7 +31,7 @@ class SetOriginRepository:
         with self._db.client().cursor(row_factory=class_row(SetObj)) as cur:
             cur.execute(
                 """
-                    select MAX(f.m_id) as id,
+                    select f.m_id as id,
                         o.restaurant_id,
                         r.restaurant_name,
                         t.date as settlement_date,
@@ -55,8 +55,8 @@ class SetOriginRepository:
                     left join dds.dm_orders o on o.id = f.order_id
                     left join dds.dm_restaurants r on r.id = o.restaurant_id
                     left join dds.dm_timestamps t on t.id = o.timestamp_id
-                    WHERE MAX(f.m_id) > %(threshold)s AND o.order_status = 'CLOSED'
-                    GROUP BY o.restaurant_id, r.restaurant_name, t.date
+                    WHERE f.m_id > %(threshold)s AND o.order_status = 'CLOSED'
+                    GROUP BY f.m_id, o.restaurant_id, r.restaurant_name, t.date
                     ORDER BY o.restaurant_id ASC
                     LIMIT %(limit)s; --Обрабатываем только одну пачку объектов.
                 """, {
