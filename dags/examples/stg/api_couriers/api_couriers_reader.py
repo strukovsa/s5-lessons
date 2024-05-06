@@ -28,7 +28,7 @@ class CouriersReader:
         self.nickname = nickname
         self.cohort_number = cohort_number
 
-    def get_couriers(self, limit: int) -> List[Dict]:
+    def get_couriers(self, _, limit: int) -> List[Dict]:
         sort_field = "_id"
         sort_direction = "asc"
         offset = 0
