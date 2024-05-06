@@ -4,7 +4,7 @@ from typing import Dict, List
 import requests
 
 def fetch_data_from_api(sort_field: str, sort_direction: str, limit: int, offset: int, api_key: str, nickname: str, cohort_number: str):
-    url = "https://d5d04q7d963eapoepsqr.apigw.yandexcloud.net/restaurants"
+    url = "https://d5d04q7d963eapoepsqr.apigw.yandexcloud.net/couriers"
     params = {
         "sort_field": sort_field,
         "sort_direction": sort_direction,
