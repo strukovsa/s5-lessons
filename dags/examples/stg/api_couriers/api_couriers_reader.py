@@ -37,9 +37,9 @@ class CouriersReader:
         result = []
         while True:
             data = fetch_data_from_api(sort_field, sort_direction, page_limit, offset, self.api_key, self.nickname, self.cohort_number)
-            result.extend(data["items"])
+            result.extend(data)
 
-            if len(data["items"]) < page_limit or len(result) >= limit:
+            if len(data) < page_limit or len(result) >= limit:
                 break
 
             offset += page_limit
